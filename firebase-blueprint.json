@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the calling system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "number": { "type": "string", "description": "A unique 6-digit calling number." },
+        "displayName": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "busy", "offline"] },
+        "lastSeen": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "number"]
+    },
+    "Call": {
+      "title": "Call",
+      "description": "Represents a call session between two users.",
+      "type": "object",
+      "properties": {
+        "callerId": { "type": "string" },
+        "calleeId": { "type": "string" },
+        "status": { "type": "string", "enum": ["ringing", "accepted", "rejected", "ended"] },
+        "offer": { "type": "object" },
+        "answer": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["callerId", "calleeId", "status", "createdAt"]
+    },
+    "IceCandidate": {
+      "title": "IceCandidate",
+      "description": "WebRTC ICE candidate for signaling.",
+      "type": "object",
+      "properties": {
+        "candidate": { "type": "object" },
+        "type": { "type": "string", "enum": ["caller", "callee"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["candidate", "type", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Global user directory mapping numbers to UIDs."
+    },
+    "calls": {
+      "schema": "Call",
+      "description": "Active and past call sessions."
+    },
+    "calls/{callId}/iceCandidates": {
+      "schema": "IceCandidate",
+      "description": "Signaling candidates for a specific call."
+    }
+  }
+}

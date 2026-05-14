@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // User profiles
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.uid == request.auth.uid 
+            && data.number is string && data.number.size() == 6
+            && data.status in ['online', 'busy', 'offline'];
+      }
+
+      // Allow users to read any profile (to find by number)
+      allow read: if isSignedIn();
+      
+      // Allow users to create/update their own profile
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data)
+                    && request.resource.data.number == resource.data.number; // Number immutable
+    }
+
+    // Call sessions
+    match /calls/{callId} {
+      function isParticipant(data) {
+        return request.auth.uid == data.callerId || request.auth.uid == data.calleeId;
+      }
+
+      function isValidCall(data) {
+        return data.callerId == request.auth.uid // Caller must be current user
+            && data.status in ['ringing', 'accepted', 'rejected', 'ended']
+            && data.createdAt == request.time;
+      }
+
+      allow create: if isSignedIn() && isValidCall(request.resource.data);
+      
+      allow read: if isSignedIn() && isParticipant(resource.data);
+      
+      allow update: if isSignedIn() && isParticipant(resource.data)
+                    && (
+                      // Callee can accept/reject
+                      (request.auth.uid == resource.data.calleeId && request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'answer'])) ||
+                      // Either can end call
+                      (request.resource.data.status == 'ended' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+                    );
+    }
+
+    // ICE Candidates
+    match /calls/{callId}/iceCandidates/{candidateId} {
+      allow read: if isSignedIn() && 
+                  (request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId || 
+                   request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.calleeId);
+      
+      allow create: if isSignedIn() && 
+                    (request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId || 
+                     request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.calleeId)
+                    && request.resource.data.createdAt == request.time;
+    }
+  }
+}

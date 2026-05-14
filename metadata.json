@@ -1,0 +1,11 @@
+{
+  "name": "اتصل بي - CallMe",
+  "description": "تطبيق للمكالمات الصوتية والمرئية عبر المتصفح باستخدام أرقام مخصصة لكل مستخدم.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
